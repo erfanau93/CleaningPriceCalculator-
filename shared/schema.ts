@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, decimal, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -99,7 +100,7 @@ export const ADD_ONS = {
   extra_bedroom: 1.0
 } as const;
 
-// Keep existing user schema
+// User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -113,3 +114,33 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Quotes table for storing customer quotes
+export const quotes = pgTable("quotes", {
+  id: serial("id").primaryKey(),
+  service: text("service").notNull(),
+  bedrooms: integer("bedrooms").notNull(),
+  bathrooms: integer("bathrooms").notNull(),
+  addons: text("addons").array().notNull().default([]),
+  discountApplied: boolean("discount_applied").notNull().default(false),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  cleanerRate: decimal("cleaner_rate", { precision: 10, scale: 2 }).notNull(),
+  totalHours: decimal("total_hours", { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull().default('0'),
+  netRevenue: decimal("net_revenue", { precision: 10, scale: 2 }).notNull(),
+  gst: decimal("gst", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  cleanerPay: decimal("cleaner_pay", { precision: 10, scale: 2 }).notNull(),
+  profit: decimal("profit", { precision: 10, scale: 2 }).notNull(),
+  margin: decimal("margin", { precision: 10, scale: 2 }).notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertQuoteSchema = createInsertSchema(quotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type Quote = typeof quotes.$inferSelect;

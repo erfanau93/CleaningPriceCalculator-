@@ -21,9 +21,10 @@ Preferred communication style: Simple, everyday language.
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: PostgreSQL with Drizzle ORM (DatabaseStorage replaces MemStorage)
 - **Database Provider**: Neon Database (@neondatabase/serverless)
 - **API Design**: RESTful API with JSON responses
+- **Quote Persistence**: Quotes saved to database with full calculation history
 
 ### Build System
 - **Frontend Build**: Vite with React plugin
@@ -37,16 +38,21 @@ Preferred communication style: Simple, everyday language.
 - **Service Types**: Three main service categories with different pricing tiers
 - **Property Configuration**: Bedroom/bathroom count selector (1-6 beds, 1-3 baths)
 - **Add-on Services**: 11 optional services with fixed pricing
-- **Pricing Logic**: Hour-based calculations with configurable rates
+- **Pricing Logic**: Hour-based calculations with customizable hourly rates
+- **Customizable Rates**: Real-time adjustment of client hourly rate and cleaner cost rate
 - **Discount System**: Optional promotional discount toggle
+- **Quote Persistence**: Save quotes to database with complete calculation breakdown
 
 ### User Interface Components
 - **Quote Form**: Interactive form with real-time quote updates
 - **Service Selection**: Radio buttons for service type selection
+- **Pricing Configuration**: Input fields for customizable hourly rates
 - **Property Selectors**: Dropdown menus for bedroom/bathroom counts
 - **Add-on Checkboxes**: Multi-select checkboxes for optional services
 - **Quote Display**: Detailed breakdown showing costs, taxes, and margins
-- **Admin View**: Toggle for administrative pricing details
+- **Admin View**: Toggle for detailed profit analysis with labor breakdown
+- **Quote History**: Database-backed quote history with filtering and search
+- **Quick Profit Preview**: Real-time profit metrics in pricing configuration
 
 ### Data Management
 - **Schema Validation**: Zod schemas for request/response validation
@@ -106,5 +112,33 @@ Preferred communication style: Simple, everyday language.
 - **Migrations**: Drizzle Kit manages database schema changes
 - **Schema**: Centralized schema definitions in `shared/schema.ts`
 - **Connection**: Neon Database serverless connection for scalability
+- **Tables**: Users and Quotes tables with full relational structure
+- **Storage Layer**: DatabaseStorage class implements IStorage interface
 
-The application follows a modern full-stack architecture with strong type safety, real-time updates, and professional UI components, making it suitable for both customer-facing quote generation and internal business management.
+## Recent Changes (January 2025)
+
+### Database Integration
+- **Date**: January 15, 2025
+- **Changes**: 
+  - Replaced in-memory storage with PostgreSQL database
+  - Added quotes table with comprehensive quote data storage
+  - Implemented quote saving and history retrieval functionality
+  - Added database connection layer with Neon Database
+
+### Enhanced Pricing Controls
+- **Date**: January 15, 2025
+- **Changes**:
+  - Added customizable hourly rate inputs for client billing
+  - Added customizable cleaner rate inputs for cost calculation
+  - Implemented real-time profit analysis with detailed breakdown
+  - Added hourly profit calculations and margin analysis
+
+### User Interface Improvements
+- **Date**: January 15, 2025
+- **Changes**:
+  - Added pricing configuration section with rate controls
+  - Enhanced admin profit analysis with labor breakdown
+  - Implemented quote history view with database integration
+  - Added save quote functionality with database persistence
+
+The application now provides a complete business management solution with persistent quote storage, customizable pricing controls, and comprehensive profit analysis, making it suitable for both customer-facing quote generation and internal business management.

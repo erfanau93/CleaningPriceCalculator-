@@ -26,6 +26,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save quote endpoint
+  app.post("/api/quotes", async (req, res) => {
+    try {
+      const data = quoteCalculationSchema.parse(req.body);
+      const quoteResult = calculateQuote(data);
+      
+      // Save to database
+      const savedQuote = await storage.saveQuote({
+        service: quoteResult.service,
+        bedrooms: quoteResult.bedrooms,
+        bathrooms: quoteResult.bathrooms,
+        addons: data.addons,
+        discountApplied: quoteResult.discountApplied,
+        hourlyRate: quoteResult.hourlyRate.toString(),
+        cleanerRate: quoteResult.cleanerRate.toString(),
+        totalHours: quoteResult.totalHours.toString(),
+        subtotal: quoteResult.subtotal.toString(),
+        discountAmount: quoteResult.discountAmount.toString(),
+        netRevenue: quoteResult.netRevenue.toString(),
+        gst: quoteResult.gst.toString(),
+        total: quoteResult.total.toString(),
+        cleanerPay: quoteResult.cleanerPay.toString(),
+        profit: quoteResult.profit.toString(),
+        margin: quoteResult.margin.toString(),
+      });
+      
+      res.json(savedQuote);
+    } catch (error) {
+      res.status(400).json({ 
+        error: "Failed to save quote", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Get all quotes endpoint
+  app.get("/api/quotes", async (req, res) => {
+    try {
+      const quotes = await storage.getQuotes();
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to retrieve quotes", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Get specific quote endpoint
+  app.get("/api/quotes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const quote = await storage.getQuote(id);
+      
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to retrieve quote", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

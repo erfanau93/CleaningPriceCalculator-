@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Home as HomeIcon, Bed, PlusCircle, Calculator, FileText, Printer, TrendingUp, Phone, DollarSign, Settings } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { type QuoteCalculation, type QuoteResult, ADD_ONS } from "@shared/schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { type QuoteCalculation, type QuoteResult, type Quote, ADD_ONS } from "@shared/schema";
 
 // Add-on service display data
 const ADDON_DISPLAY = {
@@ -36,6 +36,7 @@ export default function Home() {
   const [hourlyRate, setHourlyRate] = useState(60);
   const [cleanerRate, setCleanerRate] = useState(35);
   const [quote, setQuote] = useState<QuoteResult | null>(null);
+  const [showQuoteHistory, setShowQuoteHistory] = useState(false);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
@@ -45,6 +46,25 @@ export default function Home() {
     onSuccess: (data: QuoteResult) => {
       setQuote(data);
     }
+  });
+
+  const saveQuoteMutation = useMutation({
+    mutationFn: async (data: QuoteCalculation) => {
+      const response = await apiRequest("POST", "/api/quotes", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+    }
+  });
+
+  const quotesQuery = useQuery({
+    queryKey: ['/api/quotes'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/quotes");
+      return response.json();
+    },
+    enabled: showQuoteHistory
   });
 
   // Calculate quote whenever inputs change
@@ -67,6 +87,19 @@ export default function Home() {
     } else {
       setSelectedAddons(selectedAddons.filter(a => a !== addonName));
     }
+  };
+
+  const handleSaveQuote = () => {
+    const data: QuoteCalculation = {
+      service,
+      bedrooms,
+      bathrooms,
+      addons: selectedAddons,
+      discountApplied,
+      hourlyRate,
+      cleanerRate
+    };
+    saveQuoteMutation.mutate(data);
   };
 
   const formatMoney = (amount: number) => `$${amount.toFixed(2)}`;
@@ -386,13 +419,25 @@ export default function Home() {
                 
                 {/* Action Buttons */}
                 <div className="mt-6 space-y-3">
-                  <Button className="w-full" disabled={calculateQuoteMutation.isPending}>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleSaveQuote}
+                    disabled={saveQuoteMutation.isPending || !quote}
+                  >
                     <FileText className="mr-2 h-4 w-4" />
-                    Generate Quote
+                    {saveQuoteMutation.isPending ? 'Saving...' : 'Save Quote'}
                   </Button>
                   <Button variant="outline" className="w-full">
                     <Printer className="mr-2 h-4 w-4" />
                     Print Quote
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setShowQuoteHistory(!showQuoteHistory)}
+                  >
+                    <Calculator className="mr-2 h-4 w-4" />
+                    {showQuoteHistory ? 'Hide' : 'View'} Quote History
                   </Button>
                 </div>
                 
@@ -486,6 +531,78 @@ export default function Home() {
             )}
           </div>
         </div>
+        
+        {/* Quote History Section */}
+        {showQuoteHistory && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  <Calculator className="inline mr-2 text-primary" />
+                  Quote History
+                </h2>
+                
+                {quotesQuery.isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading quotes...</p>
+                  </div>
+                ) : quotesQuery.data?.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No saved quotes yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {quotesQuery.data?.map((savedQuote: Quote, index: number) => (
+                      <div key={savedQuote.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h3 className="font-medium text-gray-900">
+                              {savedQuote.service.charAt(0).toUpperCase() + savedQuote.service.slice(1)} Clean
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {savedQuote.bedrooms} bed, {savedQuote.bathrooms} bath
+                              {savedQuote.addons && savedQuote.addons.length > 0 && 
+                                ` • ${savedQuote.addons.length} add-on${savedQuote.addons.length > 1 ? 's' : ''}`
+                              }
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-primary">
+                              ${parseFloat(savedQuote.total).toFixed(2)}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(savedQuote.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
+                          <div>
+                            <p className="text-gray-600">Hours</p>
+                            <p className="font-medium">{parseFloat(savedQuote.totalHours).toFixed(1)}h</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Rate</p>
+                            <p className="font-medium">${parseFloat(savedQuote.hourlyRate).toFixed(0)}/hr</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Profit</p>
+                            <p className="font-medium text-green-600">${parseFloat(savedQuote.profit).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Margin</p>
+                            <p className="font-medium">{parseFloat(savedQuote.margin).toFixed(1)}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   );
