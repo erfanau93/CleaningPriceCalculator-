@@ -31,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 
 function calculateQuote(data: QuoteCalculation): QuoteResult {
-  const { service, bedrooms, bathrooms, addons, discountApplied } = data;
+  const { service, bedrooms, bathrooms, addons, discountApplied, hourlyRate, cleanerRate } = data;
   
   // Get main service hours
   const serviceKey = `${bedrooms},${bathrooms}` as keyof typeof SERVICES[typeof service];
@@ -41,10 +41,10 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     throw new Error(`Invalid bed/bath combination: ${bedrooms} bed, ${bathrooms} bath`);
   }
   
-  // Calculate main service cost
-  const mainServiceCost = mainServiceHours * PRICING_CONFIG.HOURLY_RATE;
+  // Calculate main service cost using custom hourly rate
+  const mainServiceCost = mainServiceHours * hourlyRate;
   
-  // Calculate add-on costs
+  // Calculate add-on costs using custom hourly rate
   const addonItems = addons.map(addonName => {
     const hours = ADD_ONS[addonName as keyof typeof ADD_ONS];
     if (!hours) {
@@ -53,7 +53,7 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     return {
       name: addonName,
       hours,
-      cost: hours * PRICING_CONFIG.HOURLY_RATE
+      cost: hours * hourlyRate
     };
   });
   
@@ -68,9 +68,9 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   const gst = netRevenue * PRICING_CONFIG.GST_RATE;
   const total = netRevenue + gst;
   
-  // Calculate cleaner pay and profit
+  // Calculate cleaner pay and profit using custom cleaner rate
   const totalHours = mainServiceHours + addonItems.reduce((sum, addon) => sum + addon.hours, 0);
-  const cleanerPay = totalHours * PRICING_CONFIG.CLEANER_RATE;
+  const cleanerPay = totalHours * cleanerRate;
   const profit = netRevenue - cleanerPay;
   const margin = netRevenue > 0 ? (profit / netRevenue) * 100 : 0;
   
@@ -89,7 +89,10 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     total,
     cleanerPay,
     profit,
-    margin
+    margin,
+    hourlyRate,
+    cleanerRate,
+    totalHours
   };
 }
 

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Home as HomeIcon, Bed, PlusCircle, Calculator, FileText, Printer, TrendingUp, Phone } from "lucide-react";
+import { Sparkles, Home as HomeIcon, Bed, PlusCircle, Calculator, FileText, Printer, TrendingUp, Phone, DollarSign, Settings } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { type QuoteCalculation, type QuoteResult, ADD_ONS } from "@shared/schema";
@@ -32,6 +33,8 @@ export default function Home() {
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [discountApplied, setDiscountApplied] = useState(false);
   const [showAdminView, setShowAdminView] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState(60);
+  const [cleanerRate, setCleanerRate] = useState(35);
   const [quote, setQuote] = useState<QuoteResult | null>(null);
 
   const calculateQuoteMutation = useMutation({
@@ -51,10 +54,12 @@ export default function Home() {
       bedrooms,
       bathrooms,
       addons: selectedAddons,
-      discountApplied
+      discountApplied,
+      hourlyRate,
+      cleanerRate
     };
     calculateQuoteMutation.mutate(data);
-  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied]);
+  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, hourlyRate, cleanerRate]);
 
   const handleAddonToggle = (addonName: string, checked: boolean) => {
     if (checked) {
@@ -139,6 +144,76 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Pricing Configuration */}
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  <Settings className="inline mr-2 text-primary" />
+                  Pricing Configuration
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">
+                      <DollarSign className="inline w-4 h-4 mr-1" />
+                      Hourly Rate (Client)
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        value={hourlyRate}
+                        onChange={(e) => setHourlyRate(Number(e.target.value))}
+                        className="pl-8"
+                        min="1"
+                        max="200"
+                        step="1"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Amount charged to client per hour</p>
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">
+                      <DollarSign className="inline w-4 h-4 mr-1" />
+                      Cleaner Rate (Cost)
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        value={cleanerRate}
+                        onChange={(e) => setCleanerRate(Number(e.target.value))}
+                        className="pl-8"
+                        min="1"
+                        max="100"
+                        step="1"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Amount paid to cleaner per hour</p>
+                  </div>
+                </div>
+                
+                {/* Quick profit preview */}
+                {quote && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Total Hours</p>
+                        <p className="text-lg font-bold text-gray-900">{quote.totalHours}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Hourly Profit</p>
+                        <p className="text-lg font-bold text-green-600">${(quote.profit / quote.totalHours).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Margin</p>
+                        <p className="text-lg font-bold text-blue-600">{quote.margin.toFixed(1)}%</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -342,31 +417,67 @@ export default function Home() {
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold mb-4">
                     <TrendingUp className="inline mr-2 text-secondary" />
-                    Profit Analysis
+                    Detailed Profit Analysis
                   </h3>
+                  
+                  {/* Hourly Rates Section */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-300 mb-3">Hourly Rates</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800 p-3 rounded">
+                        <p className="text-xs text-gray-400">Client Rate</p>
+                        <p className="text-lg font-bold text-white">${quote.hourlyRate}/hr</p>
+                      </div>
+                      <div className="bg-gray-800 p-3 rounded">
+                        <p className="text-xs text-gray-400">Cleaner Rate</p>
+                        <p className="text-lg font-bold text-white">${quote.cleanerRate}/hr</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hours & Labor Costs */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-300 mb-3">Labor Breakdown</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-300">Total Hours</span>
+                        <span className="text-sm font-semibold text-white">{quote.totalHours}h</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-300">Revenue ({quote.totalHours}h × ${quote.hourlyRate})</span>
+                        <span className="text-sm font-semibold text-white">${(quote.totalHours * quote.hourlyRate).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-300">Cleaner Pay ({quote.totalHours}h × ${quote.cleanerRate})</span>
+                        <span className="text-sm font-semibold text-white">{formatMoney(quote.cleanerPay)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Final Profit */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-300">Cleaner Pay</span>
-                      <span className="text-sm font-semibold text-white">
-                        {formatMoney(quote.cleanerPay)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-300">Net Revenue (excl GST)</span>
+                      <span className="text-sm text-gray-300">Net Revenue (after discount)</span>
                       <span className="text-sm font-semibold text-white">
                         {formatMoney(quote.netRevenue)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                      <span className="text-sm font-medium text-gray-300">Profit</span>
+                      <span className="text-sm font-medium text-gray-300">Total Profit</span>
                       <span className="text-sm font-bold text-secondary">
                         {formatMoney(quote.profit)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-300">Margin</span>
+                      <span className="text-sm text-gray-300">Profit Margin</span>
                       <span className="text-sm font-semibold text-secondary">
                         {quote.margin.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Profit per Hour</span>
+                      <span className="text-sm font-semibold text-secondary">
+                        ${(quote.profit / quote.totalHours).toFixed(2)}/hr
                       </span>
                     </div>
                   </div>

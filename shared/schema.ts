@@ -8,7 +8,9 @@ export const quoteCalculationSchema = z.object({
   bedrooms: z.number().min(1).max(6),
   bathrooms: z.number().min(1).max(3),
   addons: z.array(z.string()).default([]),
-  discountApplied: z.boolean().default(false)
+  discountApplied: z.boolean().default(false),
+  hourlyRate: z.number().min(1).max(200).default(60),
+  cleanerRate: z.number().min(1).max(100).default(35)
 });
 
 // Quote result schema
@@ -31,7 +33,10 @@ export const quoteResultSchema = z.object({
   total: z.number(),
   cleanerPay: z.number(),
   profit: z.number(),
-  margin: z.number()
+  margin: z.number(),
+  hourlyRate: z.number(),
+  cleanerRate: z.number(),
+  totalHours: z.number()
 });
 
 export type QuoteCalculation = z.infer<typeof quoteCalculationSchema>;
