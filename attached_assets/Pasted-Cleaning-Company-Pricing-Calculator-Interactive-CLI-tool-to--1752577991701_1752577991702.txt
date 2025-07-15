@@ -1,0 +1,172 @@
+Cleaning Company Pricing Calculator
+---------------------------------------
+Interactive CLI tool to generate quotes for General, Deep/Spring, and Move‑In/Move‑Out cleans,
+plus optional add‑on services.
+
+✓ Adjustable settings at the top of the file:
+    HOURLY_RATE           – how much you charge clients per labour hour
+    CLEANER_RATE          – how much you pay cleaners per labour hour
+    GST_RATE              – Australian GST (default 10 %)
+    DEFAULT_DISCOUNT_PCT  – promotional % discount you can toggle per quote
+
+All figures below are in Australian dollars and hours.
+
+Run:  python cleaning_calculator.py
+"""
+
+
+from dataclasses import dataclass
+from typing import Dict, Tuple, List
+
+# ========= CONFIGURABLE GLOBALS ========= #
+HOURLY_RATE = 60.0         # client billing rate $/hr
+CLEANER_RATE = 35.0        # cleaner pay rate $/hr
+GST_RATE = 0.10            # 10 % GST
+DEFAULT_DISCOUNT_PCT = 20  # promo discount percent (0‑100)
+
+# ========= DATA TABLES ========= #
+# Key: (beds, baths)  -> labour hours
+SERVICES: Dict[str, Dict[Tuple[int, int], float]] = {
+    "general": {
+        (1, 1): 2,
+        (2, 1): 2.5,
+        (2, 2): 3.5,
+        (3, 2): 4,
+        (4, 2): 4.75,
+        (4, 3): 5.75,
+        (5, 3): 6.5,
+        (6, 3): 7,
+    },
+    "deep": {
+        (1, 1): 3.5,
+        (2, 1): 4,
+        (2, 2): 5,
+        (3, 2): 6,
+        (4, 2): 7.25,
+        (4, 3): 8.5,
+        (5, 3): 9.75,
+        (6, 3): 11,
+    },
+    "move": {
+        (1, 1): 5,
+        (2, 1): 6,
+        (2, 2): 7,
+        (3, 2): 8,
+        (4, 2): 9.5,
+        (4, 3): 10.5,
+        (5, 3): 11,
+        (6, 3): 12.5,
+    },
+}
+
+# Add‑on services: name -> labour hours
+ADD_ONS: Dict[str, float] = {
+    "inside_oven_clean": 0.75,
+    "inside_fridge_clean": 0.75,
+    "inside_freezer_clean": 0.75,
+    "inside_windows_and_tracks": 1.5,
+    "blinds_up_to_5_sets": 0.75,
+    "balcony_clean": 0.75,
+    "garage_sweep_and_cobwebs": 0.75,
+    "carpet_steam_clean_1_room": 1.0,
+    "wall_spot_cleaning": 1.0,
+    "extra_bathroom": 1.0,
+    "extra_bedroom": 1.0,
+}
+
+# ======== HELPER DATACLASS ======== #
+@dataclass
+class LineItem:
+    description: str
+    labour_hours: float
+
+    def charge(self) -> float:
+        return self.labour_hours * HOURLY_RATE
+
+    def cleaner_pay(self) -> float:
+        return self.labour_hours * CLEANER_RATE
+
+
+# ======== CORE FUNCTIONS ======== #
+def build_main_job(service: str, beds: int, baths: int) -> LineItem:
+    try:
+        labour = SERVICES[service][(beds, baths)]
+    except KeyError:
+        raise ValueError("Configuration for that bed/bath combo not found.")
+    desc = f"{service.title()} Clean – {beds} Bed, {baths} Bath"
+    return LineItem(desc, labour)
+
+def build_add_on(name: str) -> LineItem:
+    labour = ADD_ONS[name]
+    desc = name.replace('_', ' ').title()
+    return LineItem(desc, labour)
+
+def apply_discount(amount: float, discount_pct: float) -> float:
+    return amount * (1 - discount_pct / 100)
+
+def calc_gst(net: float) -> float:
+    return net * GST_RATE
+
+def format_money(val: float) -> str:
+    return f"${val:,.2f}"
+
+# ======== CLI ======== #
+def main() -> None:
+    print("─" * 60)
+    print("Sydney Premium Cleaning – Quote Calculator\n")
+
+    # Select service
+    service = input("Service type [general/deep/move]: ").strip().lower()
+    if service not in SERVICES:
+        raise SystemExit("Invalid service type.")
+
+    beds = int(input("Number of bedrooms: ").strip())
+    baths = int(input("Number of bathrooms: ").strip())
+
+    main_job = build_main_job(service, beds, baths)
+
+    # Add‑ons
+    addons: List[LineItem] = []
+    print("\nAvailable add‑ons:")
+    for k in ADD_ONS:
+        print(" •", k)
+    raw_add = input("Enter add‑ons separated by comma (or press Enter): ").strip()
+    if raw_add:
+        for name in [x.strip() for x in raw_add.split(',') if x.strip()]:
+            if name not in ADD_ONS:
+                print(f"Warning: '{name}' not recognised – skipped.")
+                continue
+            addons.append(build_add_on(name))
+
+    # Discount toggle
+    discount_flag = input(f"Apply {DEFAULT_DISCOUNT_PCT}% promo discount? [y/N]: ").strip().lower() == 'y'
+
+    # ====== CALCULATIONS ====== #
+    subtotal_charge = main_job.charge() + sum(a.charge() for a in addons)
+    subtotal_cleaner = main_job.cleaner_pay() + sum(a.cleaner_pay() for a in addons)
+
+    net_revenue = apply_discount(subtotal_charge, DEFAULT_DISCOUNT_PCT) if discount_flag else subtotal_charge
+    gst = calc_gst(net_revenue)
+    total_payable = net_revenue + gst
+    profit = net_revenue - subtotal_cleaner
+
+    # ====== OUTPUT ====== #
+    print("\nQuote Summary")
+    print("─" * 60)
+    def pr(label, amount): print(f"{label:<35}{format_money(amount)}")
+    pr("Main job", main_job.charge())
+    for a in addons: pr(a.description, a.charge())
+    pr("Subtotal", subtotal_charge)
+    if discount_flag:
+        pr(f"Less {DEFAULT_DISCOUNT_PCT}% discount", - (subtotal_charge - net_revenue))
+    pr("GST (10%)", gst)
+    pr("Total (inc GST)", total_payable)
+    print("─" * 60)
+    pr("Cleaner pay", subtotal_cleaner)
+    pr("Net revenue (excl GST)", net_revenue)
+    pr("Profit", profit)
+    print("\nDone.\n")
+
+
+if __name__ == "__main__":
+    main()
