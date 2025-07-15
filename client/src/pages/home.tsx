@@ -32,11 +32,18 @@ export default function Home() {
   const [bathrooms, setBathrooms] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [discountApplied, setDiscountApplied] = useState(false);
-  const [showAdminView, setShowAdminView] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(10);
+  const [showAdminView, setShowAdminView] = useState(true);
   const [hourlyRate, setHourlyRate] = useState(60);
   const [cleanerRate, setCleanerRate] = useState(35);
   const [quote, setQuote] = useState<QuoteResult | null>(null);
   const [showQuoteHistory, setShowQuoteHistory] = useState(false);
+  const [customAddons, setCustomAddons] = useState<{name: string, price: number}[]>([]);
+  const [newCustomAddon, setNewCustomAddon] = useState({name: "", price: 0});
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [depositPercentage, setDepositPercentage] = useState(50);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
@@ -75,11 +82,17 @@ export default function Home() {
       bathrooms,
       addons: selectedAddons,
       discountApplied,
+      discountPercentage,
       hourlyRate,
-      cleanerRate
+      cleanerRate,
+      customAddons,
+      customerName,
+      customerPhone,
+      customerEmail,
+      depositPercentage
     };
     calculateQuoteMutation.mutate(data);
-  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, hourlyRate, cleanerRate]);
+  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
 
   const handleAddonToggle = (addonName: string, checked: boolean) => {
     if (checked) {
@@ -96,10 +109,45 @@ export default function Home() {
       bathrooms,
       addons: selectedAddons,
       discountApplied,
+      discountPercentage,
       hourlyRate,
-      cleanerRate
+      cleanerRate,
+      customAddons,
+      customerName,
+      customerPhone,
+      customerEmail,
+      depositPercentage
     };
     saveQuoteMutation.mutate(data);
+  };
+
+  const handleResetForm = () => {
+    setService('general');
+    setBedrooms(1);
+    setBathrooms(1);
+    setSelectedAddons([]);
+    setDiscountApplied(false);
+    setDiscountPercentage(10);
+    setHourlyRate(60);
+    setCleanerRate(35);
+    setCustomAddons([]);
+    setNewCustomAddon({name: "", price: 0});
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerEmail("");
+    setDepositPercentage(50);
+    setQuote(null);
+  };
+
+  const handleAddCustomAddon = () => {
+    if (newCustomAddon.name && newCustomAddon.price > 0) {
+      setCustomAddons([...customAddons, newCustomAddon]);
+      setNewCustomAddon({name: "", price: 0});
+    }
+  };
+
+  const handleRemoveCustomAddon = (index: number) => {
+    setCustomAddons(customAddons.filter((_, i) => i !== index));
   };
 
   const formatMoney = (amount: number) => `$${amount.toFixed(2)}`;
@@ -124,8 +172,8 @@ export default function Home() {
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm text-gray-600">Need help?</p>
-                <p className="text-primary font-semibold">1300 CLEAN UP</p>
+                <p className="text-sm text-gray-600">Professional cleaning services</p>
+                <p className="text-primary font-semibold">Get your quote today!</p>
               </div>
             </div>
           </div>
@@ -292,6 +340,43 @@ export default function Home() {
               </CardContent>
             </Card>
 
+            {/* Customer Information */}
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  <Phone className="inline mr-2 text-primary" />
+                  Customer Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</Label>
+                    <Input
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Enter customer name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</Label>
+                    <Input
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Email Address</Label>
+                    <Input
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Add-on Services */}
             <Card>
               <CardContent className="p-6">
@@ -325,24 +410,111 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+                
+                {/* Custom Add-ons Section */}
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Custom Add-ons</h3>
+                  
+                  {/* Add Custom Addon Form */}
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="block text-sm font-medium text-gray-700 mb-1">Service Name</Label>
+                        <Input
+                          value={newCustomAddon.name}
+                          onChange={(e) => setNewCustomAddon(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter service name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="block text-sm font-medium text-gray-700 mb-1">Price</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <Input
+                            type="number"
+                            value={newCustomAddon.price}
+                            onChange={(e) => setNewCustomAddon(prev => ({ ...prev, price: Number(e.target.value) }))}
+                            className="pl-8"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <Button 
+                          onClick={handleAddCustomAddon}
+                          disabled={!newCustomAddon.name || newCustomAddon.price <= 0}
+                          className="w-full"
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Service
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Custom Addons List */}
+                  {customAddons.length > 0 && (
+                    <div className="space-y-2">
+                      {customAddons.map((addon, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-sm font-medium text-gray-700">{addon.name}</span>
+                            <span className="text-sm text-gray-500">${addon.price.toFixed(2)}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveCustomAddon(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
             {/* Discount Section */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-accent">%</div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Promotional Discount</h3>
-                      <p className="text-sm text-gray-600">Apply 20% discount for new customers</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-accent">%</div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Promotional Discount</h3>
+                        <p className="text-sm text-gray-600">Apply discount for customers</p>
+                      </div>
                     </div>
+                    <Switch
+                      checked={discountApplied}
+                      onCheckedChange={setDiscountApplied}
+                    />
                   </div>
-                  <Switch
-                    checked={discountApplied}
-                    onCheckedChange={setDiscountApplied}
-                  />
+                  
+                  {discountApplied && (
+                    <div>
+                      <Label className="block text-sm font-medium text-gray-700 mb-2">Discount Percentage</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={discountPercentage}
+                          onChange={(e) => setDiscountPercentage(Number(e.target.value))}
+                          className="pr-8"
+                          min="0"
+                          max="100"
+                          step="1"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">%</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Enter discount percentage (0-100)</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -389,10 +561,22 @@ export default function Home() {
                       </span>
                     </div>
                     
+                    {/* Custom Add-ons */}
+                    {quote.customAddons.map((addon, index) => (
+                      <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-700">
+                          {addon.name} (Custom)
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatMoney(addon.price)}
+                        </span>
+                      </div>
+                    ))}
+                    
                     {/* Discount */}
                     {quote.discountApplied && (
                       <div className="flex justify-between items-center py-2">
-                        <span className="text-sm font-medium text-accent">Less 20% discount</span>
+                        <span className="text-sm font-medium text-accent">Less {quote.discountPercentage}% discount</span>
                         <span className="text-sm font-semibold text-accent">
                           -{formatMoney(quote.discountAmount)}
                         </span>
@@ -414,6 +598,37 @@ export default function Home() {
                         {formatMoney(quote.total)}
                       </span>
                     </div>
+                    
+                    {/* Deposit Information */}
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Deposit Required</span>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            type="number"
+                            value={depositPercentage}
+                            onChange={(e) => setDepositPercentage(Number(e.target.value))}
+                            className="w-16 h-8 text-sm"
+                            min="0"
+                            max="100"
+                            step="5"
+                          />
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-blue-700">Deposit Amount</span>
+                        <span className="text-sm font-bold text-blue-700">
+                          {formatMoney(quote.depositAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-sm text-gray-600">Remaining Balance</span>
+                        <span className="text-sm text-gray-600">
+                          {formatMoney(quote.total - quote.depositAmount)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
                 
@@ -428,8 +643,16 @@ export default function Home() {
                     {saveQuoteMutation.isPending ? 'Saving...' : 'Save Quote'}
                   </Button>
                   <Button variant="outline" className="w-full">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Quote
+                    <Phone className="mr-2 h-4 w-4" />
+                    Email Quote
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleResetForm}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Reset Form
                   </Button>
                   <Button 
                     variant="outline" 

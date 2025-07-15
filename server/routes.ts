@@ -38,7 +38,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bedrooms: quoteResult.bedrooms,
         bathrooms: quoteResult.bathrooms,
         addons: data.addons,
+        customAddons: data.customAddons,
         discountApplied: quoteResult.discountApplied,
+        discountPercentage: quoteResult.discountPercentage.toString(),
         hourlyRate: quoteResult.hourlyRate.toString(),
         cleanerRate: quoteResult.cleanerRate.toString(),
         totalHours: quoteResult.totalHours.toString(),
@@ -50,6 +52,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cleanerPay: quoteResult.cleanerPay.toString(),
         profit: quoteResult.profit.toString(),
         margin: quoteResult.margin.toString(),
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail,
+        depositPercentage: quoteResult.depositPercentage.toString(),
+        depositAmount: quoteResult.depositAmount.toString(),
       });
       
       res.json(savedQuote);
@@ -98,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 
 function calculateQuote(data: QuoteCalculation): QuoteResult {
-  const { service, bedrooms, bathrooms, addons, discountApplied, hourlyRate, cleanerRate } = data;
+  const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage } = data;
   
   // Get main service hours
   const serviceKey = `${bedrooms},${bathrooms}` as keyof typeof SERVICES[typeof service];
@@ -125,10 +132,11 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   });
   
   const addonCost = addonItems.reduce((sum, addon) => sum + addon.cost, 0);
-  const subtotal = mainServiceCost + addonCost;
+  const customAddonCost = customAddons.reduce((sum, addon) => sum + addon.price, 0);
+  const subtotal = mainServiceCost + addonCost + customAddonCost;
   
-  // Apply discount
-  const discountAmount = discountApplied ? subtotal * (PRICING_CONFIG.DEFAULT_DISCOUNT_PCT / 100) : 0;
+  // Apply discount with dynamic percentage
+  const discountAmount = discountApplied ? subtotal * (discountPercentage / 100) : 0;
   const netRevenue = subtotal - discountAmount;
   
   // Calculate GST and total
@@ -141,15 +149,20 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   const profit = netRevenue - cleanerPay;
   const margin = netRevenue > 0 ? (profit / netRevenue) * 100 : 0;
   
+  // Calculate deposit amount
+  const depositAmount = total * (depositPercentage / 100);
+  
   return {
     service,
     bedrooms,
     bathrooms,
     addons: addonItems,
+    customAddons,
     mainServiceHours,
     mainServiceCost,
     subtotal,
     discountApplied,
+    discountPercentage,
     discountAmount,
     netRevenue,
     gst,
@@ -159,7 +172,12 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     margin,
     hourlyRate,
     cleanerRate,
-    totalHours
+    totalHours,
+    customerName,
+    customerPhone,
+    customerEmail,
+    depositPercentage,
+    depositAmount
   };
 }
 

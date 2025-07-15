@@ -10,8 +10,17 @@ export const quoteCalculationSchema = z.object({
   bathrooms: z.number().min(1).max(3),
   addons: z.array(z.string()).default([]),
   discountApplied: z.boolean().default(false),
+  discountPercentage: z.number().min(0).max(100).default(10),
   hourlyRate: z.number().min(1).max(200).default(60),
-  cleanerRate: z.number().min(1).max(100).default(35)
+  cleanerRate: z.number().min(1).max(100).default(35),
+  customAddons: z.array(z.object({
+    name: z.string(),
+    price: z.number().min(0)
+  })).default([]),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
+  customerEmail: z.string().optional(),
+  depositPercentage: z.number().min(0).max(100).default(50)
 });
 
 // Quote result schema
@@ -24,10 +33,15 @@ export const quoteResultSchema = z.object({
     hours: z.number(),
     cost: z.number()
   })),
+  customAddons: z.array(z.object({
+    name: z.string(),
+    price: z.number()
+  })),
   mainServiceHours: z.number(),
   mainServiceCost: z.number(),
   subtotal: z.number(),
   discountApplied: z.boolean(),
+  discountPercentage: z.number(),
   discountAmount: z.number(),
   netRevenue: z.number(),
   gst: z.number(),
@@ -37,7 +51,12 @@ export const quoteResultSchema = z.object({
   margin: z.number(),
   hourlyRate: z.number(),
   cleanerRate: z.number(),
-  totalHours: z.number()
+  totalHours: z.number(),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
+  customerEmail: z.string().optional(),
+  depositPercentage: z.number(),
+  depositAmount: z.number()
 });
 
 export type QuoteCalculation = z.infer<typeof quoteCalculationSchema>;
@@ -122,7 +141,9 @@ export const quotes = pgTable("quotes", {
   bedrooms: integer("bedrooms").notNull(),
   bathrooms: integer("bathrooms").notNull(),
   addons: text("addons").array().notNull().default([]),
+  customAddons: jsonb("custom_addons").notNull().default([]),
   discountApplied: boolean("discount_applied").notNull().default(false),
+  discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).notNull().default('10'),
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
   cleanerRate: decimal("cleaner_rate", { precision: 10, scale: 2 }).notNull(),
   totalHours: decimal("total_hours", { precision: 10, scale: 2 }).notNull(),
@@ -134,6 +155,11 @@ export const quotes = pgTable("quotes", {
   cleanerPay: decimal("cleaner_pay", { precision: 10, scale: 2 }).notNull(),
   profit: decimal("profit", { precision: 10, scale: 2 }).notNull(),
   margin: decimal("margin", { precision: 10, scale: 2 }).notNull(),
+  customerName: text("customer_name"),
+  customerPhone: text("customer_phone"),
+  customerEmail: text("customer_email"),
+  depositPercentage: decimal("deposit_percentage", { precision: 5, scale: 2 }).notNull().default('50'),
+  depositAmount: decimal("deposit_amount", { precision: 10, scale: 2 }).notNull().default('0'),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
