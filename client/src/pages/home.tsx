@@ -769,13 +769,19 @@ export default function Home() {
                     {quote && quote.suburbMultiplier && quote.suburbMultiplier !== 1.0 && (
                       <div className="flex justify-between items-center py-2 border-b border-gray-100">
                         <span className="text-sm font-medium text-blue-700">
-                          Postcode adjustment applied: x{quote.suburbMultiplier}
+                          Postcode adjustment (×{quote.suburbMultiplier})
                           {quote.suburbInfo && quote.suburbInfo.found && quote.suburbInfo.income ? 
                             ` (${quote.suburbInfo.suburb}, $${quote.suburbInfo.income.toLocaleString()})` : ''}
                         </span>
                         <span className="text-sm font-semibold text-blue-700">
-                          +{((quote.suburbMultiplier - 1) * 100).toFixed(0)}%
+                          +{formatMoney((quote.suburbMultiplier - 1) * (quote.preMultiplierSubtotal || 0))}
                         </span>
+                        {/* Debug info */}
+                        <div className="text-xs text-gray-500">
+                          Debug: preMultiplierSubtotal={quote.preMultiplierSubtotal}, 
+                          multiplier={quote.suburbMultiplier}, 
+                          adjustment={((quote.suburbMultiplier - 1) * (quote.preMultiplierSubtotal || 0)).toFixed(2)}
+                        </div>
                       </div>
                     )}
                     
@@ -928,8 +934,18 @@ export default function Home() {
                         <span className="text-sm font-semibold text-white">{quote.totalHours}h</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Revenue ({quote.totalHours}h × ${quote.hourlyRate})</span>
+                        <span className="text-sm text-gray-300">Base Revenue ({quote.totalHours}h × ${quote.hourlyRate})</span>
                         <span className="text-sm font-semibold text-white">${(quote.totalHours * quote.hourlyRate).toFixed(2)}</span>
+                      </div>
+                      {quote.suburbMultiplier && quote.suburbMultiplier !== 1 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-300">Postcode Adjustment (×{quote.suburbMultiplier})</span>
+                          <span className="text-sm font-semibold text-white">+${((quote.suburbMultiplier - 1) * (quote.preMultiplierSubtotal || 0)).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                        <span className="text-sm text-gray-300">Adjusted Revenue</span>
+                        <span className="text-sm font-semibold text-white">${quote.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-300">Cleaner Pay ({quote.totalHours}h × ${quote.cleanerRate})</span>

@@ -64,7 +64,8 @@ export const quoteResultSchema = z.object({
   customerSuburb: z.string().optional(),
   customerPostcode: z.string().optional(),
   suburbMultiplier: z.number().optional(),
-  suburbInfo: z.any().optional()
+  suburbInfo: z.any().optional(),
+  preMultiplierSubtotal: z.number().optional()
 });
 
 export type QuoteCalculation = z.infer<typeof quoteCalculationSchema>;

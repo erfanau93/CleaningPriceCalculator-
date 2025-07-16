@@ -165,17 +165,20 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   
   const addonCost = addonItems.reduce((sum, addon) => sum + addon.cost, 0);
   const customAddonCost = customAddons.reduce((sum, addon) => sum + addon.price, 0);
-  let subtotal = mainServiceCost + addonCost + customAddonCost;
-
+  
+  // Calculate pre-multiplier subtotal for detailed breakdown
+  const preMultiplierSubtotal = mainServiceCost + addonCost + customAddonCost;
+  
   // Postcode multiplier logic
   let appliedMultiplier = 1.0;
   let postcodeInfo: any = undefined;
+  let subtotal = preMultiplierSubtotal;
   if (customerPostcode) {
     // Use provided multiplier or suggest from data
     const postcodeResult = getMultiplierForPostcode(customerPostcode);
     appliedMultiplier = suburbMultiplier ?? postcodeResult.multiplier;
     postcodeInfo = getPostcodeInfo(customerPostcode);
-    subtotal = subtotal * appliedMultiplier;
+    subtotal = preMultiplierSubtotal * appliedMultiplier;
   }
 
   // Apply discount - either percentage or fixed amount
@@ -204,6 +207,11 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   
   // Calculate deposit amount
   const depositAmount = total * (depositPercentage / 100);
+  
+  // Debug logging
+  console.log('Debug - preMultiplierSubtotal:', preMultiplierSubtotal);
+  console.log('Debug - appliedMultiplier:', appliedMultiplier);
+  console.log('Debug - postcode adjustment:', (appliedMultiplier - 1) * preMultiplierSubtotal);
   
   return {
     service,
@@ -234,7 +242,8 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     customerSuburb,
     customerPostcode,
     suburbMultiplier: appliedMultiplier,
-    suburbInfo: postcodeInfo
+    suburbInfo: postcodeInfo,
+    preMultiplierSubtotal
   };
 }
 
