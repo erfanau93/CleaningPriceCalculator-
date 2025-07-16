@@ -9,7 +9,7 @@ import {
   type QuoteCalculation,
   type QuoteResult
 } from "@shared/schema";
-import { getMultiplierForSuburb, getSuburbInfo } from './utils/suburbPricing';
+import { getMultiplierForPostcode, getPostcodeInfo } from './utils/suburbPricing';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -106,13 +106,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Suggest multiplier endpoint
   app.get('/api/suggest-multiplier', (req, res) => {
-    const suburb = req.query.suburb as string;
-    if (!suburb) {
-      return res.json({ multiplier: 1.0 });
+    const postcode = req.query.postcode as string;
+    if (!postcode) {
+      return res.json({ multiplier: 1.0, found: false, message: "No postcode provided" });
     }
-    const multiplier = getMultiplierForSuburb(suburb);
-    const suburbInfo = getSuburbInfo(suburb);
-    res.json({ multiplier, suburbInfo });
+    const postcodeResult = getMultiplierForPostcode(postcode);
+    const postcodeInfo = getPostcodeInfo(postcode);
+    res.json({ 
+      multiplier: postcodeResult.multiplier, 
+      found: postcodeResult.found,
+      message: postcodeResult.message,
+      postcodeInfo 
+    });
   });
 
   const httpServer = createServer(app);
@@ -162,13 +167,14 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   const customAddonCost = customAddons.reduce((sum, addon) => sum + addon.price, 0);
   let subtotal = mainServiceCost + addonCost + customAddonCost;
 
-  // Suburb multiplier logic
+  // Postcode multiplier logic
   let appliedMultiplier = 1.0;
-  let suburbInfo: any = undefined;
-  if (customerSuburb) {
+  let postcodeInfo: any = undefined;
+  if (customerPostcode) {
     // Use provided multiplier or suggest from data
-    appliedMultiplier = suburbMultiplier ?? getMultiplierForSuburb(customerSuburb);
-    suburbInfo = getSuburbInfo(customerSuburb);
+    const postcodeResult = getMultiplierForPostcode(customerPostcode);
+    appliedMultiplier = suburbMultiplier ?? postcodeResult.multiplier;
+    postcodeInfo = getPostcodeInfo(customerPostcode);
     subtotal = subtotal * appliedMultiplier;
   }
 
@@ -228,7 +234,7 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     customerSuburb,
     customerPostcode,
     suburbMultiplier: appliedMultiplier,
-    suburbInfo
+    suburbInfo: postcodeInfo
   };
 }
 

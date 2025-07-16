@@ -54,28 +54,34 @@ export default function Home() {
   const [suggestedMultiplier, setSuggestedMultiplier] = useState(1.0);
   const [suburbInfo, setSuburbInfo] = useState<any>(null);
 
-  // Suggest multiplier when suburb changes
+  // Suggest multiplier when postcode changes
   useEffect(() => {
-    if (!customerSuburb) {
+    if (!customerPostcode) {
       setSuggestedMultiplier(1.0);
       setSuburbMultiplier(1.0);
       setSuburbInfo(null);
       return;
     }
     // Fetch suggestion from backend
-    fetch(`/api/suggest-multiplier?suburb=${encodeURIComponent(customerSuburb)}`)
+    fetch(`/api/suggest-multiplier?postcode=${encodeURIComponent(customerPostcode)}`)
       .then(res => res.json())
       .then(data => {
         setSuggestedMultiplier(data.multiplier);
         setSuburbMultiplier(data.multiplier);
-        setSuburbInfo(data.suburbInfo);
+        setSuburbInfo(data.postcodeInfo);
+        if (!data.found) {
+          setErrorMessage(data.message || "Postcode not found");
+        } else {
+          setErrorMessage(null);
+        }
       })
       .catch(() => {
         setSuggestedMultiplier(1.0);
         setSuburbMultiplier(1.0);
         setSuburbInfo(null);
+        setErrorMessage("Error fetching postcode data");
       });
-  }, [customerSuburb]);
+  }, [customerPostcode]);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
@@ -478,6 +484,9 @@ export default function Home() {
                       onChange={(e) => setCustomerPostcode(e.target.value)}
                       placeholder="Enter postcode"
                     />
+                    {suburbInfo && !suburbInfo.found && (
+                      <p className="text-xs text-red-600 mt-1">{suburbInfo.message || "Postcode not found"}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">Suburb Multiplier</Label>
@@ -489,8 +498,11 @@ export default function Home() {
                       step={0.01}
                       onChange={e => setSuburbMultiplier(Number(e.target.value))}
                     />
-                    {suggestedMultiplier !== 1.0 && (
-                      <p className="text-xs text-blue-600 mt-1">Suggested: x{suggestedMultiplier} {suburbInfo && suburbInfo.income ? `(${customerSuburb}, $${suburbInfo.income.toLocaleString()})` : ''}</p>
+                    {suggestedMultiplier !== 1.0 && suburbInfo && suburbInfo.found && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Suggested: x{suggestedMultiplier} 
+                        {suburbInfo.income ? ` (${suburbInfo.suburb}, $${suburbInfo.income.toLocaleString()})` : ''}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -752,6 +764,20 @@ export default function Home() {
                         </span>
                       </div>
                     ))}
+                    
+                    {/* Postcode Adjustment */}
+                    {quote && quote.suburbMultiplier && quote.suburbMultiplier !== 1.0 && (
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-blue-700">
+                          Postcode adjustment applied: x{quote.suburbMultiplier}
+                          {quote.suburbInfo && quote.suburbInfo.found && quote.suburbInfo.income ? 
+                            ` (${quote.suburbInfo.suburb}, $${quote.suburbInfo.income.toLocaleString()})` : ''}
+                        </span>
+                        <span className="text-sm font-semibold text-blue-700">
+                          +{((quote.suburbMultiplier - 1) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    )}
                     
                     {/* Discount */}
                     {quote.discountApplied && (
