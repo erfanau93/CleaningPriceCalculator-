@@ -21,6 +21,9 @@ export const quoteCalculationSchema = z.object({
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
   customerEmail: z.string().optional(),
+  customerSuburb: z.string().optional(),
+  customerPostcode: z.string().optional(),
+  suburbMultiplier: z.number().min(0.5).max(2.0).default(1.0),
   depositPercentage: z.number().min(0).max(100).default(50)
 });
 
@@ -57,7 +60,11 @@ export const quoteResultSchema = z.object({
   customerPhone: z.string().optional(),
   customerEmail: z.string().optional(),
   depositPercentage: z.number(),
-  depositAmount: z.number()
+  depositAmount: z.number(),
+  customerSuburb: z.string().optional(),
+  customerPostcode: z.string().optional(),
+  suburbMultiplier: z.number().optional(),
+  suburbInfo: z.any().optional()
 });
 
 export type QuoteCalculation = z.infer<typeof quoteCalculationSchema>;

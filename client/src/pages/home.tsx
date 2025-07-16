@@ -48,6 +48,34 @@ export default function Home() {
   const [depositPercentage, setDepositPercentage] = useState(50);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [customerSuburb, setCustomerSuburb] = useState("");
+  const [customerPostcode, setCustomerPostcode] = useState("");
+  const [suburbMultiplier, setSuburbMultiplier] = useState(1.0);
+  const [suggestedMultiplier, setSuggestedMultiplier] = useState(1.0);
+  const [suburbInfo, setSuburbInfo] = useState<any>(null);
+
+  // Suggest multiplier when suburb changes
+  useEffect(() => {
+    if (!customerSuburb) {
+      setSuggestedMultiplier(1.0);
+      setSuburbMultiplier(1.0);
+      setSuburbInfo(null);
+      return;
+    }
+    // Fetch suggestion from backend
+    fetch(`/api/suggest-multiplier?suburb=${encodeURIComponent(customerSuburb)}`)
+      .then(res => res.json())
+      .then(data => {
+        setSuggestedMultiplier(data.multiplier);
+        setSuburbMultiplier(data.multiplier);
+        setSuburbInfo(data.suburbInfo);
+      })
+      .catch(() => {
+        setSuggestedMultiplier(1.0);
+        setSuburbMultiplier(1.0);
+        setSuburbInfo(null);
+      });
+  }, [customerSuburb]);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
@@ -109,6 +137,9 @@ export default function Home() {
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
       customerEmail: customerEmail || undefined,
+      customerSuburb: customerSuburb || undefined,
+      customerPostcode: customerPostcode || undefined,
+      suburbMultiplier,
       depositPercentage
     };
     console.log('Sending data to calculate:', data);
@@ -134,11 +165,14 @@ export default function Home() {
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
       customerEmail: customerEmail || undefined,
+      customerSuburb: customerSuburb || undefined,
+      customerPostcode: customerPostcode || undefined,
+      suburbMultiplier,
       depositPercentage
     };
     console.log('Calculating quote with data:', data);
     calculateQuoteMutation.mutate(data);
-  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, discountAmount, discountType, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
+  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, discountAmount, discountType, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage, customerSuburb, customerPostcode, suburbMultiplier]);
 
   const handleAddonToggle = (addonName: string, checked: boolean) => {
     if (checked) {
@@ -163,6 +197,9 @@ export default function Home() {
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
       customerEmail: customerEmail || undefined,
+      customerSuburb: customerSuburb || undefined,
+      customerPostcode: customerPostcode || undefined,
+      suburbMultiplier,
       depositPercentage
     };
     saveQuoteMutation.mutate(data);
@@ -423,6 +460,38 @@ export default function Home() {
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder="Enter email address"
                     />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Suburb</Label>
+                    <Input
+                      value={customerSuburb}
+                      onChange={(e) => setCustomerSuburb(e.target.value)}
+                      placeholder="Enter suburb"
+                    />
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Postcode</Label>
+                    <Input
+                      value={customerPostcode}
+                      onChange={(e) => setCustomerPostcode(e.target.value)}
+                      placeholder="Enter postcode"
+                    />
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-gray-700 mb-2">Suburb Multiplier</Label>
+                    <Input
+                      type="number"
+                      value={suburbMultiplier}
+                      min={0.5}
+                      max={2.0}
+                      step={0.01}
+                      onChange={e => setSuburbMultiplier(Number(e.target.value))}
+                    />
+                    {suggestedMultiplier !== 1.0 && (
+                      <p className="text-xs text-blue-600 mt-1">Suggested: x{suggestedMultiplier} {suburbInfo && suburbInfo.income ? `(${customerSuburb}, $${suburbInfo.income.toLocaleString()})` : ''}</p>
+                    )}
                   </div>
                 </div>
               </CardContent>

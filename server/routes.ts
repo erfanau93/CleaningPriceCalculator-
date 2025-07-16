@@ -9,6 +9,7 @@ import {
   type QuoteCalculation,
   type QuoteResult
 } from "@shared/schema";
+import { getMultiplierForSuburb, getSuburbInfo } from './utils/suburbPricing';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -103,12 +104,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Suggest multiplier endpoint
+  app.get('/api/suggest-multiplier', (req, res) => {
+    const suburb = req.query.suburb as string;
+    if (!suburb) {
+      return res.json({ multiplier: 1.0 });
+    }
+    const multiplier = getMultiplierForSuburb(suburb);
+    const suburbInfo = getSuburbInfo(suburb);
+    res.json({ multiplier, suburbInfo });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
 
 function calculateQuote(data: QuoteCalculation): QuoteResult {
-  const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, discountAmount, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage } = data;
+  const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, discountAmount, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage, customerSuburb, customerPostcode, suburbMultiplier } = data;
   
   // Calculate total rooms
   const totalRooms = bedrooms + bathrooms;
@@ -148,8 +160,18 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   
   const addonCost = addonItems.reduce((sum, addon) => sum + addon.cost, 0);
   const customAddonCost = customAddons.reduce((sum, addon) => sum + addon.price, 0);
-  const subtotal = mainServiceCost + addonCost + customAddonCost;
-  
+  let subtotal = mainServiceCost + addonCost + customAddonCost;
+
+  // Suburb multiplier logic
+  let appliedMultiplier = 1.0;
+  let suburbInfo: any = undefined;
+  if (customerSuburb) {
+    // Use provided multiplier or suggest from data
+    appliedMultiplier = suburbMultiplier ?? getMultiplierForSuburb(customerSuburb);
+    suburbInfo = getSuburbInfo(customerSuburb);
+    subtotal = subtotal * appliedMultiplier;
+  }
+
   // Apply discount - either percentage or fixed amount
   let finalDiscountAmount = 0;
   if (discountApplied) {
@@ -202,7 +224,11 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     customerPhone,
     customerEmail,
     depositPercentage,
-    depositAmount
+    depositAmount,
+    customerSuburb,
+    customerPostcode,
+    suburbMultiplier: appliedMultiplier,
+    suburbInfo
   };
 }
 
