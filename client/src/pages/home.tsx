@@ -47,21 +47,28 @@ export default function Home() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [depositPercentage, setDepositPercentage] = useState(50);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
       console.log('Calculating quote with data:', data);
       const response = await apiRequest("POST", "/api/calculate-quote", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to calculate quote');
+      }
       return response.json();
     },
     onSuccess: (data: QuoteResult) => {
       console.log('Quote calculated successfully:', data);
       setQuote(data);
       setShowSuccessMessage(true);
+      setErrorMessage(null);
       setTimeout(() => setShowSuccessMessage(false), 3000);
     },
     onError: (error) => {
       console.error('Error calculating quote:', error);
+      setErrorMessage(error.message);
     }
   });
 
@@ -87,6 +94,13 @@ export default function Home() {
   // Manual calculation function
   const handleCalculateQuote = () => {
     console.log('Manual calculate button clicked');
+    
+    // Check if current combination is valid
+    if (!isValidCombination(bedrooms, bathrooms)) {
+      setErrorMessage(`Invalid bed/bath combination: ${bedrooms} bed, ${bathrooms} bath. Please select a valid combination.`);
+      return;
+    }
+    
     const data: QuoteCalculation = {
       service,
       bedrooms,
@@ -97,10 +111,10 @@ export default function Home() {
       discountAmount: discountType === 'amount' ? discountAmount : 0,
       hourlyRate,
       cleanerRate,
-      customAddons,
-      customerName,
-      customerPhone,
-      customerEmail,
+      customAddons: customAddons || [],
+      customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
+      customerEmail: customerEmail || undefined,
       depositPercentage
     };
     console.log('Sending data to calculate:', data);
@@ -109,6 +123,15 @@ export default function Home() {
 
   // Calculate quote whenever inputs change
   useEffect(() => {
+    // Only calculate if the combination is valid
+    if (!isValidCombination(bedrooms, bathrooms)) {
+      console.log('Skipping calculation - invalid combination:', bedrooms, 'bed,', bathrooms, 'bath');
+      return;
+    }
+    
+    // Clear any previous error messages
+    setErrorMessage(null);
+    
     const data: QuoteCalculation = {
       service,
       bedrooms,
@@ -119,12 +142,13 @@ export default function Home() {
       discountAmount: discountType === 'amount' ? discountAmount : 0,
       hourlyRate,
       cleanerRate,
-      customAddons,
-      customerName,
-      customerPhone,
-      customerEmail,
+      customAddons: customAddons || [],
+      customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
+      customerEmail: customerEmail || undefined,
       depositPercentage
     };
+    console.log('Calculating quote with valid combination:', data);
     calculateQuoteMutation.mutate(data);
   }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, discountAmount, discountType, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
 
@@ -147,10 +171,10 @@ export default function Home() {
       discountAmount: discountType === 'amount' ? discountAmount : 0,
       hourlyRate,
       cleanerRate,
-      customAddons,
-      customerName,
-      customerPhone,
-      customerEmail,
+      customAddons: customAddons || [],
+      customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
+      customerEmail: customerEmail || undefined,
       depositPercentage
     };
     saveQuoteMutation.mutate(data);
@@ -191,6 +215,42 @@ export default function Home() {
   const formatAddonName = (name: string) => ADDON_DISPLAY[name as keyof typeof ADDON_DISPLAY]?.name || name;
 
   const serviceNames = { general: 'General', deep: 'Deep', move: 'Move In/Out' };
+
+  // Get valid bed/bath combinations
+  const getValidBedBathCombinations = () => {
+    const combinations = [
+      { beds: 1, baths: 1 },
+      { beds: 2, baths: 1 },
+      { beds: 2, baths: 2 },
+      { beds: 3, baths: 2 },
+      { beds: 4, baths: 2 },
+      { beds: 4, baths: 3 },
+      { beds: 5, baths: 3 },
+      { beds: 6, baths: 3 }
+    ];
+    return combinations;
+  };
+
+  // Get available bedrooms for current bathroom selection
+  const getAvailableBedrooms = (bathroomCount: number) => {
+    return getValidBedBathCombinations()
+      .filter(combo => combo.baths === bathroomCount)
+      .map(combo => combo.beds);
+  };
+
+  // Get available bathrooms for current bedroom selection
+  const getAvailableBathrooms = (bedroomCount: number) => {
+    return getValidBedBathCombinations()
+      .filter(combo => combo.beds === bedroomCount)
+      .map(combo => combo.baths);
+  };
+
+  // Check if current combination is valid
+  const isValidCombination = (beds: number, baths: number) => {
+    return getValidBedBathCombinations().some(combo => 
+      combo.beds === beds && combo.baths === baths
+    );
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -345,12 +405,23 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</Label>
-                    <Select value={bedrooms.toString()} onValueChange={(value) => setBedrooms(parseInt(value))}>
+                    <Select 
+                      value={bedrooms.toString()} 
+                      onValueChange={(value) => {
+                        const newBedrooms = parseInt(value);
+                        setBedrooms(newBedrooms);
+                        // Auto-adjust bathrooms if current combination is invalid
+                        const availableBathrooms = getAvailableBathrooms(newBedrooms);
+                        if (!availableBathrooms.includes(bathrooms)) {
+                          setBathrooms(availableBathrooms[0]);
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1, 2, 3, 4, 5, 6].map(num => (
+                        {getAvailableBedrooms(bathrooms).map(num => (
                           <SelectItem key={num} value={num.toString()}>
                             {num} Bedroom{num !== 1 ? 's' : ''}
                           </SelectItem>
@@ -360,12 +431,23 @@ export default function Home() {
                   </div>
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">Bathrooms</Label>
-                    <Select value={bathrooms.toString()} onValueChange={(value) => setBathrooms(parseInt(value))}>
+                    <Select 
+                      value={bathrooms.toString()} 
+                      onValueChange={(value) => {
+                        const newBathrooms = parseInt(value);
+                        setBathrooms(newBathrooms);
+                        // Auto-adjust bedrooms if current combination is invalid
+                        const availableBedrooms = getAvailableBedrooms(newBathrooms);
+                        if (!availableBedrooms.includes(bedrooms)) {
+                          setBedrooms(availableBedrooms[0]);
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1, 2, 3].map(num => (
+                        {getAvailableBathrooms(bedrooms).map(num => (
                           <SelectItem key={num} value={num.toString()}>
                             {num} Bathroom{num !== 1 ? 's' : ''}
                           </SelectItem>
@@ -374,6 +456,11 @@ export default function Home() {
                     </Select>
                   </div>
                 </div>
+                {!isValidCombination(bedrooms, bathrooms) && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                    ⚠️ This combination is not available. Please select a valid bed/bath combination.
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -625,6 +712,9 @@ export default function Home() {
                   </Button>
                   {calculateQuoteMutation.isError && (
                     <p className="text-red-500 text-sm mt-2">Error calculating quote. Check console for details.</p>
+                  )}
+                  {errorMessage && (
+                    <p className="text-red-500 text-sm mt-2">Error: {errorMessage}</p>
                   )}
                   {showSuccessMessage && (
                     <p className="text-green-500 text-sm mt-2">Quote calculated successfully!</p>

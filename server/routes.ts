@@ -15,10 +15,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Quote calculation endpoint
   app.post("/api/calculate-quote", async (req, res) => {
     try {
+      console.log('Received request body:', JSON.stringify(req.body, null, 2));
       const data = quoteCalculationSchema.parse(req.body);
+      console.log('Parsed data successfully:', JSON.stringify(data, null, 2));
       const result = calculateQuote(data);
       res.json(result);
     } catch (error) {
+      console.error('Validation error:', error);
       res.status(400).json({ 
         error: "Invalid request data", 
         details: error instanceof Error ? error.message : "Unknown error" 
