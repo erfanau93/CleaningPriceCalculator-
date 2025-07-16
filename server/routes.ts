@@ -105,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 
 function calculateQuote(data: QuoteCalculation): QuoteResult {
-  const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage } = data;
+  const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, discountAmount, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage } = data;
   
   // Get main service hours
   const serviceKey = `${bedrooms},${bathrooms}` as keyof typeof SERVICES[typeof service];
@@ -135,9 +135,19 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   const customAddonCost = customAddons.reduce((sum, addon) => sum + addon.price, 0);
   const subtotal = mainServiceCost + addonCost + customAddonCost;
   
-  // Apply discount with dynamic percentage
-  const discountAmount = discountApplied ? subtotal * (discountPercentage / 100) : 0;
-  const netRevenue = subtotal - discountAmount;
+  // Apply discount - either percentage or fixed amount
+  let finalDiscountAmount = 0;
+  if (discountApplied) {
+    if (discountAmount > 0) {
+      // Fixed amount discount
+      finalDiscountAmount = Math.min(discountAmount, subtotal);
+    } else {
+      // Percentage discount
+      finalDiscountAmount = subtotal * (discountPercentage / 100);
+    }
+  }
+  
+  const netRevenue = subtotal - finalDiscountAmount;
   
   // Calculate GST and total
   const gst = netRevenue * PRICING_CONFIG.GST_RATE;
@@ -163,7 +173,7 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     subtotal,
     discountApplied,
     discountPercentage,
-    discountAmount,
+    discountAmount: finalDiscountAmount,
     netRevenue,
     gst,
     total,

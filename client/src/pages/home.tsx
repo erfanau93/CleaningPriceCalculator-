@@ -33,6 +33,8 @@ export default function Home() {
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(10);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage');
   const [showAdminView, setShowAdminView] = useState(true);
   const [hourlyRate, setHourlyRate] = useState(60);
   const [cleanerRate, setCleanerRate] = useState(35);
@@ -44,14 +46,22 @@ export default function Home() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [depositPercentage, setDepositPercentage] = useState(50);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const calculateQuoteMutation = useMutation({
     mutationFn: async (data: QuoteCalculation) => {
+      console.log('Calculating quote with data:', data);
       const response = await apiRequest("POST", "/api/calculate-quote", data);
       return response.json();
     },
     onSuccess: (data: QuoteResult) => {
+      console.log('Quote calculated successfully:', data);
       setQuote(data);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    },
+    onError: (error) => {
+      console.error('Error calculating quote:', error);
     }
   });
 
@@ -74,6 +84,29 @@ export default function Home() {
     enabled: showQuoteHistory
   });
 
+  // Manual calculation function
+  const handleCalculateQuote = () => {
+    console.log('Manual calculate button clicked');
+    const data: QuoteCalculation = {
+      service,
+      bedrooms,
+      bathrooms,
+      addons: selectedAddons,
+      discountApplied,
+      discountPercentage: discountType === 'percentage' ? discountPercentage : 0,
+      discountAmount: discountType === 'amount' ? discountAmount : 0,
+      hourlyRate,
+      cleanerRate,
+      customAddons,
+      customerName,
+      customerPhone,
+      customerEmail,
+      depositPercentage
+    };
+    console.log('Sending data to calculate:', data);
+    calculateQuoteMutation.mutate(data);
+  };
+
   // Calculate quote whenever inputs change
   useEffect(() => {
     const data: QuoteCalculation = {
@@ -82,7 +115,8 @@ export default function Home() {
       bathrooms,
       addons: selectedAddons,
       discountApplied,
-      discountPercentage,
+      discountPercentage: discountType === 'percentage' ? discountPercentage : 0,
+      discountAmount: discountType === 'amount' ? discountAmount : 0,
       hourlyRate,
       cleanerRate,
       customAddons,
@@ -92,7 +126,7 @@ export default function Home() {
       depositPercentage
     };
     calculateQuoteMutation.mutate(data);
-  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
+  }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, discountAmount, discountType, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
 
   const handleAddonToggle = (addonName: string, checked: boolean) => {
     if (checked) {
@@ -109,7 +143,8 @@ export default function Home() {
       bathrooms,
       addons: selectedAddons,
       discountApplied,
-      discountPercentage,
+      discountPercentage: discountType === 'percentage' ? discountPercentage : 0,
+      discountAmount: discountType === 'amount' ? discountAmount : 0,
       hourlyRate,
       cleanerRate,
       customAddons,
@@ -128,6 +163,8 @@ export default function Home() {
     setSelectedAddons([]);
     setDiscountApplied(false);
     setDiscountPercentage(10);
+    setDiscountAmount(0);
+    setDiscountType('percentage');
     setHourlyRate(60);
     setCleanerRate(35);
     setCustomAddons([]);
@@ -498,21 +535,68 @@ export default function Home() {
                   </div>
                   
                   {discountApplied && (
-                    <div>
-                      <Label className="block text-sm font-medium text-gray-700 mb-2">Discount Percentage</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={discountPercentage}
-                          onChange={(e) => setDiscountPercentage(Number(e.target.value))}
-                          className="pr-8"
-                          min="0"
-                          max="100"
-                          step="1"
-                        />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">%</span>
+                    <div className="space-y-4">
+                      {/* Discount Type Toggle */}
+                      <div className="flex items-center space-x-4">
+                        <Label className="text-sm font-medium text-gray-700">Discount Type:</Label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="percentage"
+                            name="discountType"
+                            value="percentage"
+                            checked={discountType === 'percentage'}
+                            onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'amount')}
+                            className="mr-1"
+                          />
+                          <Label htmlFor="percentage" className="text-sm">Percentage (%)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="amount"
+                            name="discountType"
+                            value="amount"
+                            checked={discountType === 'amount'}
+                            onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'amount')}
+                            className="mr-1"
+                          />
+                          <Label htmlFor="amount" className="text-sm">Fixed Amount ($)</Label>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Enter discount percentage (0-100)</p>
+                      
+                      {/* Discount Input */}
+                      <div>
+                        <Label className="block text-sm font-medium text-gray-700 mb-2">
+                          {discountType === 'percentage' ? 'Discount Percentage' : 'Discount Amount'}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={discountType === 'percentage' ? discountPercentage : discountAmount}
+                            onChange={(e) => {
+                              if (discountType === 'percentage') {
+                                setDiscountPercentage(Number(e.target.value));
+                              } else {
+                                setDiscountAmount(Number(e.target.value));
+                              }
+                            }}
+                            className="pr-8"
+                            min="0"
+                            max={discountType === 'percentage' ? 100 : undefined}
+                            step={discountType === 'percentage' ? 1 : 0.01}
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                            {discountType === 'percentage' ? '%' : '$'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {discountType === 'percentage' 
+                            ? 'Enter discount percentage (0-100)' 
+                            : 'Enter fixed discount amount'
+                          }
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -528,6 +612,24 @@ export default function Home() {
                   <Calculator className="inline mr-2 text-primary" />
                   Quote Summary
                 </h2>
+                
+                {/* Calculator Button */}
+                <div className="mb-4">
+                  <Button 
+                    className="w-full" 
+                    onClick={handleCalculateQuote}
+                    disabled={calculateQuoteMutation.isPending}
+                  >
+                    <Calculator className="mr-2 h-4 w-4" />
+                    {calculateQuoteMutation.isPending ? 'Calculating...' : 'Calculate Quote'}
+                  </Button>
+                  {calculateQuoteMutation.isError && (
+                    <p className="text-red-500 text-sm mt-2">Error calculating quote. Check console for details.</p>
+                  )}
+                  {showSuccessMessage && (
+                    <p className="text-green-500 text-sm mt-2">Quote calculated successfully!</p>
+                  )}
+                </div>
                 
                 {quote && (
                   <div className="space-y-4">
@@ -553,14 +655,6 @@ export default function Home() {
                       </div>
                     ))}
                     
-                    {/* Subtotal */}
-                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                      <span className="text-sm font-medium text-gray-700">Subtotal</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatMoney(quote.subtotal)}
-                      </span>
-                    </div>
-                    
                     {/* Custom Add-ons */}
                     {quote.customAddons.map((addon, index) => (
                       <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
@@ -576,12 +670,22 @@ export default function Home() {
                     {/* Discount */}
                     {quote.discountApplied && (
                       <div className="flex justify-between items-center py-2">
-                        <span className="text-sm font-medium text-accent">Less {quote.discountPercentage}% discount</span>
+                        <span className="text-sm font-medium text-accent">
+                          Less {discountType === 'percentage' ? `${quote.discountPercentage}%` : `$${quote.discountAmount}`} discount
+                        </span>
                         <span className="text-sm font-semibold text-accent">
                           -{formatMoney(quote.discountAmount)}
                         </span>
                       </div>
                     )}
+                    
+                    {/* Subtotal */}
+                    <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                      <span className="text-sm font-medium text-gray-700">Subtotal</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatMoney(quote.netRevenue)}
+                      </span>
+                    </div>
                     
                     {/* GST */}
                     <div className="flex justify-between items-center py-2">

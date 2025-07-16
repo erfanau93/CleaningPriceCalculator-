@@ -11,6 +11,7 @@ export const quoteCalculationSchema = z.object({
   addons: z.array(z.string()).default([]),
   discountApplied: z.boolean().default(false),
   discountPercentage: z.number().min(0).max(100).default(10),
+  discountAmount: z.number().min(0).default(0),
   hourlyRate: z.number().min(1).max(200).default(60),
   cleanerRate: z.number().min(1).max(100).default(35),
   customAddons: z.array(z.object({
