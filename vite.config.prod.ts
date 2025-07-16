@@ -5,20 +5,7 @@ import path from "path";
 export default defineConfig({
   plugins: [
     react(),
-    // Only include Replit plugins in development
-    ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
-      ? [
-          // Dynamically import Replit plugins only when needed
-          (async () => {
-            const { default: runtimeErrorOverlay } = await import("@replit/vite-plugin-runtime-error-modal");
-            return runtimeErrorOverlay();
-          })(),
-          (async () => {
-            const { cartographer } = await import("@replit/vite-plugin-cartographer");
-            return cartographer();
-          })(),
-        ]
-      : []),
+    // No Replit plugins in production
   ],
   resolve: {
     alias: {
@@ -38,4 +25,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-});
+}); 
