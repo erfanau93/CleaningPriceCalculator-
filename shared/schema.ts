@@ -6,8 +6,8 @@ import { z } from "zod";
 // Quote calculation request schema
 export const quoteCalculationSchema = z.object({
   service: z.enum(['general', 'deep', 'move']),
-  bedrooms: z.number().min(1).max(6),
-  bathrooms: z.number().min(1).max(3),
+  bedrooms: z.number().min(1).max(20), // Increased max to support more bedrooms
+  bathrooms: z.number().min(1).max(10), // Increased max to support more bathrooms
   addons: z.array(z.string()).default([]),
   discountApplied: z.boolean().default(false),
   discountPercentage: z.number().min(0).max(100).default(10),

@@ -110,16 +110,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 function calculateQuote(data: QuoteCalculation): QuoteResult {
   const { service, bedrooms, bathrooms, addons, customAddons, discountApplied, discountPercentage, discountAmount, hourlyRate, cleanerRate, customerName, customerPhone, customerEmail, depositPercentage } = data;
   
-  // Get main service hours
-  const serviceKey = `${bedrooms},${bathrooms}` as keyof typeof SERVICES[typeof service];
-  const mainServiceHours = SERVICES[service][serviceKey];
+  // Calculate total rooms
+  const totalRooms = bedrooms + bathrooms;
   
-  if (!mainServiceHours) {
-    throw new Error(`Invalid bed/bath combination: ${bedrooms} bed, ${bathrooms} bath`);
-  }
+  // Time estimate per room (hours) - different for each service type
+  const timePerRoom = {
+    general: 0.8, // 48 minutes per room
+    deep: 1.2,    // 72 minutes per room  
+    move: 1.5     // 90 minutes per room
+  }[service];
+  
+  // Minimum time per job
+  const minTime = {
+    general: 1.5,
+    deep: 2.0,
+    move: 2.5
+  }[service];
+  
+  // Calculate total time estimate
+  const timeEstimateHours = Math.max(totalRooms * timePerRoom, minTime);
   
   // Calculate main service cost using custom hourly rate
-  const mainServiceCost = mainServiceHours * hourlyRate;
+  const mainServiceCost = timeEstimateHours * hourlyRate;
   
   // Calculate add-on costs using custom hourly rate
   const addonItems = addons.map(addonName => {
@@ -157,7 +169,7 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
   const total = netRevenue + gst;
   
   // Calculate cleaner pay and profit using custom cleaner rate
-  const totalHours = mainServiceHours + addonItems.reduce((sum, addon) => sum + addon.hours, 0);
+  const totalHours = timeEstimateHours + addonItems.reduce((sum, addon) => sum + addon.hours, 0);
   const cleanerPay = totalHours * cleanerRate;
   const profit = netRevenue - cleanerPay;
   const margin = netRevenue > 0 ? (profit / netRevenue) * 100 : 0;
@@ -171,7 +183,7 @@ function calculateQuote(data: QuoteCalculation): QuoteResult {
     bathrooms,
     addons: addonItems,
     customAddons,
-    mainServiceHours,
+    mainServiceHours: timeEstimateHours,
     mainServiceCost,
     subtotal,
     discountApplied,

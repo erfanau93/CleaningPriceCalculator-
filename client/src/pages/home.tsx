@@ -95,12 +95,6 @@ export default function Home() {
   const handleCalculateQuote = () => {
     console.log('Manual calculate button clicked');
     
-    // Check if current combination is valid
-    if (!isValidCombination(bedrooms, bathrooms)) {
-      setErrorMessage(`Invalid bed/bath combination: ${bedrooms} bed, ${bathrooms} bath. Please select a valid combination.`);
-      return;
-    }
-    
     const data: QuoteCalculation = {
       service,
       bedrooms,
@@ -123,12 +117,6 @@ export default function Home() {
 
   // Calculate quote whenever inputs change
   useEffect(() => {
-    // Only calculate if the combination is valid
-    if (!isValidCombination(bedrooms, bathrooms)) {
-      console.log('Skipping calculation - invalid combination:', bedrooms, 'bed,', bathrooms, 'bath');
-      return;
-    }
-    
     // Clear any previous error messages
     setErrorMessage(null);
     
@@ -148,7 +136,7 @@ export default function Home() {
       customerEmail: customerEmail || undefined,
       depositPercentage
     };
-    console.log('Calculating quote with valid combination:', data);
+    console.log('Calculating quote with data:', data);
     calculateQuoteMutation.mutate(data);
   }, [service, bedrooms, bathrooms, selectedAddons, discountApplied, discountPercentage, discountAmount, discountType, hourlyRate, cleanerRate, customAddons, customerName, customerPhone, customerEmail, depositPercentage]);
 
@@ -216,41 +204,8 @@ export default function Home() {
 
   const serviceNames = { general: 'General', deep: 'Deep', move: 'Move In/Out' };
 
-  // Get valid bed/bath combinations
-  const getValidBedBathCombinations = () => {
-    const combinations = [
-      { beds: 1, baths: 1 },
-      { beds: 2, baths: 1 },
-      { beds: 2, baths: 2 },
-      { beds: 3, baths: 2 },
-      { beds: 4, baths: 2 },
-      { beds: 4, baths: 3 },
-      { beds: 5, baths: 3 },
-      { beds: 6, baths: 3 }
-    ];
-    return combinations;
-  };
-
-  // Get available bedrooms for current bathroom selection
-  const getAvailableBedrooms = (bathroomCount: number) => {
-    return getValidBedBathCombinations()
-      .filter(combo => combo.baths === bathroomCount)
-      .map(combo => combo.beds);
-  };
-
-  // Get available bathrooms for current bedroom selection
-  const getAvailableBathrooms = (bedroomCount: number) => {
-    return getValidBedBathCombinations()
-      .filter(combo => combo.beds === bedroomCount)
-      .map(combo => combo.baths);
-  };
-
-  // Check if current combination is valid
-  const isValidCombination = (beds: number, baths: number) => {
-    return getValidBedBathCombinations().some(combo => 
-      combo.beds === beds && combo.baths === baths
-    );
-  };
+  // Calculate total rooms for display
+  const totalRooms = bedrooms + bathrooms;
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -405,62 +360,34 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</Label>
-                    <Select 
-                      value={bedrooms.toString()} 
-                      onValueChange={(value) => {
-                        const newBedrooms = parseInt(value);
-                        setBedrooms(newBedrooms);
-                        // Auto-adjust bathrooms if current combination is invalid
-                        const availableBathrooms = getAvailableBathrooms(newBedrooms);
-                        if (!availableBathrooms.includes(bathrooms)) {
-                          setBathrooms(availableBathrooms[0]);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableBedrooms(bathrooms).map(num => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num} Bedroom{num !== 1 ? 's' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(Number(e.target.value))}
+                      min="1"
+                      max="20"
+                      step="1"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter number of bedrooms (1-20)</p>
                   </div>
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">Bathrooms</Label>
-                    <Select 
-                      value={bathrooms.toString()} 
-                      onValueChange={(value) => {
-                        const newBathrooms = parseInt(value);
-                        setBathrooms(newBathrooms);
-                        // Auto-adjust bedrooms if current combination is invalid
-                        const availableBedrooms = getAvailableBedrooms(newBathrooms);
-                        if (!availableBedrooms.includes(bedrooms)) {
-                          setBedrooms(availableBedrooms[0]);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableBathrooms(bedrooms).map(num => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num} Bathroom{num !== 1 ? 's' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number"
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(Number(e.target.value))}
+                      min="1"
+                      max="10"
+                      step="1"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter number of bathrooms (1-10)</p>
                   </div>
                 </div>
-                {!isValidCombination(bedrooms, bathrooms) && (
-                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                    ⚠️ This combination is not available. Please select a valid bed/bath combination.
-                  </div>
-                )}
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                  📊 Total Rooms: {bedrooms + bathrooms} (Bedrooms: {bedrooms} + Bathrooms: {bathrooms})
+                </div>
               </CardContent>
             </Card>
 
